@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# loancalc--Given a principal loan amount, interest rate, and
+#   duration of loan (years), calculates the per-payment amount
+
+
+nicenumber()
+{
+# Note that we assume that '.' is the decimal separator in the INPUT value
+#   to this script. The decimal separator in the output value is '.' unless
+#   specified by the user with the -d flag.
+
+integer=$(echo $1 | cut -d. -f1)        # Left of the decimal
+decimal=$(echo $1 | cut -d. -f2)        # Right of the decimal
+# Check if number has more than the integer part.
+if [ "$decimal" != "$1" ]; then
+   # There's a fractional part, so let's include it.
+   result="${DD:= '.'}$decimal"
+fi
+
+thousands=$integer
+
+while [ $thousands -gt 999 ]; do
+      remainder=$(($thousands % 1000))    # Three least significant digits
+
+       # We need 'remainder' to be three digits. Do we need to add zeros?
+       while [ ${#remainder} -lt 3 ] ; do  # Force leading zeros
+         remainder="0$remainder"
+       done
+
+     result="${TD:=","}${remainder}${result}"    # Builds right to left
+     thousands=$(($thousands / 1000))    # To left of remainder, if any
+done
+
+nicenum="${thousands}${result}"
+if [ ! -z $2 ] ; then
+   echo $nicenum
+fi
+}
+
+if [ $# -ne 3 ] ; then
+   echo "Usage: $0 principal interest loan-duration-years" >&2
+   exit 1
+fi
+
+P=$1 I=$2 L=$3
+J="$(<span style="color: #ffff00;">scriptbc</span> -p 8 $I / \( 12 \* 100 \) )"
+N="$(( $L * 12 ))"
+M="$(<span style="color: #ffff00;">scriptbc</span> -p 8 $P \* \( $J / \(1 - \(1 + $J\) \^ -$N\) \) )"
+
+# Now a little prettying up of the value:
+amount="$(echo $M | cut -d. -f1)"
+cents="$(echo $M | cut -d. -f2 | cut -c1-2)"
+
+cat << EOF
+A $L-year loan at $I% interest with a principal amount of $(nicenumber $P 1 )
+results in a payment of Rs $amount.$cents each month for the duration of
+the loan ($N payments).
+EOF
+
+exit 0
